@@ -14,7 +14,7 @@ class DashedUploadArea extends StatelessWidget {
     required this.secondaryText,
     this.onTap,
     this.buttonLabel,
-    this.height = 180,
+    this.height = 210,
   });
 
   final IconData icon;
@@ -40,16 +40,12 @@ class DashedUploadArea extends StatelessWidget {
         ),
         child: Container(
           width: double.infinity,
-          height: height,
+          constraints: BoxConstraints(minHeight: height),
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 36,
-                color: AppColors.onSurfaceVariant,
-              ),
+              Icon(icon, size: 36, color: AppColors.onSurfaceVariant),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 primaryText,
