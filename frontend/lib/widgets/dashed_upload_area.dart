@@ -14,7 +14,7 @@ class DashedUploadArea extends StatelessWidget {
     required this.secondaryText,
     this.onTap,
     this.buttonLabel,
-    this.height = 210,
+    this.height = 180,
   });
 
   final IconData icon;
