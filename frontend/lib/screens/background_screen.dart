@@ -1,14 +1,56 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../widgets/widgets.dart';
+import '../services/api_service.dart';
 
-/// Background Remover screen matching the removebg.png mockup.
-///
-/// Contains: title, checkerboard preview area with zoom controls,
-/// success state card (with download/copy buttons), and a dashed
-/// "Upload Another" card.
-class BackgroundScreen extends StatelessWidget {
+class BackgroundScreen extends StatefulWidget {
   const BackgroundScreen({super.key});
+
+  @override
+  State<BackgroundScreen> createState() => _BackgroundScreenState();
+}
+
+class _BackgroundScreenState extends State<BackgroundScreen> {
+  final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
+  Uint8List? _processedImage;
+
+  // Fungsi untuk membuka galeri, memilih foto, dan mengirim ke API
+  Future<void> _pickAndProcessImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _isLoading = true;
+        _processedImage = null; // Reset gambar sebelumnya jika ada
+      });
+
+      File imageFile = File(pickedFile.path);
+
+      // Memanggil endpoint FastAPI dari api_service.dart
+      Uint8List? result = await ApiService.removeBackground(imageFile);
+
+      setState(() {
+        _processedImage = result;
+        _isLoading = false;
+      });
+
+      if (result == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Gagal menghapus background. Cek koneksi server.'),
+            ),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +63,7 @@ class BackgroundScreen extends StatelessWidget {
           // ── Title ──────────────────────────────────────
           Text(
             'Background Remover',
-            style: AppTypography.displayLg.copyWith(
-              color: AppColors.onSurface,
-            ),
+            style: AppTypography.displayLg.copyWith(color: AppColors.onSurface),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
@@ -50,84 +90,88 @@ class BackgroundScreen extends StatelessWidget {
               height: 220,
               child: CheckerboardBackground(
                 child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Placeholder for the processed image
-                      Icon(
-                        Icons.headphones,
-                        size: 80,
-                        color: AppColors.onSurfaceVariant.withValues(alpha: 0.5),
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'Processed image preview',
-                        style: AppTypography.labelSm.copyWith(
-                          color: AppColors.onSurfaceVariant,
+                  // Logika Tampilan: Loading -> Hasil Gambar -> Placeholder
+                  child: _isLoading
+                      ? const CircularProgressIndicator()
+                      : _processedImage != null
+                      ? Image.memory(_processedImage!, fit: BoxFit.contain)
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.headphones,
+                              size: 80,
+                              color: AppColors.onSurfaceVariant.withValues(
+                                alpha: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              'Processed image preview',
+                              style: AppTypography.labelSm.copyWith(
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          // ── Success State Card ─────────────────────────
-          Container(
-            decoration: AppTheme.cardDecoration,
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Success!',
-                  style: AppTypography.headlineSm.copyWith(
-                    color: AppColors.onSurface,
-                    fontWeight: FontWeight.w700,
+          // ── Success State Card (Hanya muncul jika gambar berhasil diproses)
+          if (_processedImage != null && !_isLoading) ...[
+            Container(
+              decoration: AppTheme.cardDecoration,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Success!',
+                    style: AppTypography.headlineSm.copyWith(
+                      color: AppColors.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Background removed perfectly in 1.2s.',
-                  style: AppTypography.bodyMd.copyWith(
-                    color: AppColors.onSurfaceVariant,
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Background removed perfectly.',
+                    style: AppTypography.bodyMd.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.md),
 
-                // Download PNG button
-                PrimaryButton(
-                  label: 'Download PNG',
-                  icon: Icons.download,
-                  onPressed: () {
-                    // TODO: save processed image
-                  },
-                ),
-                const SizedBox(height: AppSpacing.sm),
-
-                // Copy to Clipboard button
-                SecondaryButton(
-                  label: 'Copy to Clipboard',
-                  onPressed: () {
-                    // TODO: copy image to clipboard
-                  },
-                ),
-              ],
+                  PrimaryButton(
+                    label: 'Download PNG',
+                    icon: Icons.download,
+                    onPressed: () {
+                      // TODO: Logika save ke galeri HP
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Fitur download segera hadir!'),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.sm),
+          ],
 
           // ── Upload Another (Dashed) ────────────────────
           DashedUploadArea(
             icon: Icons.add_photo_alternate_outlined,
-            primaryText: 'Upload Another',
-            secondaryText: 'Drag & drop or click\n\nSupports JPG, PNG, WEBP',
-            height: 170,
-            onTap: () {
-              // TODO: open file picker, then call ApiService.removeBackground()
-            },
+            primaryText: _processedImage == null && !_isLoading
+                ? 'Upload Image'
+                : 'Upload Another',
+            secondaryText: 'Tap to browse gallery\n\nSupports JPG, PNG, WEBP',
+            onTap: _isLoading
+                ? null
+                : _pickAndProcessImage, // Nonaktifkan tombol saat loading
           ),
           const SizedBox(height: AppSpacing.lg),
         ],
@@ -135,7 +179,7 @@ class BackgroundScreen extends StatelessWidget {
     );
   }
 
-  static Widget _zoomButton(IconData icon) {
+  Widget _zoomButton(IconData icon) {
     return Container(
       width: 28,
       height: 28,
