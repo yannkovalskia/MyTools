@@ -1,11 +1,11 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../widgets/widgets.dart';
+import '../services/api_service.dart';
 
-/// Image Upscaler screen matching the img_upscaler.png mockup.
-///
-/// Contains: title, dashed source image upload area, 2x/4x/8x toggle,
-/// Upscale Image button, and a Before/After preview area.
 class UpscalerScreen extends StatefulWidget {
   const UpscalerScreen({super.key});
 
@@ -14,7 +14,47 @@ class UpscalerScreen extends StatefulWidget {
 }
 
 class _UpscalerScreenState extends State<UpscalerScreen> {
-  String _selectedFactor = '4x';
+  final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
+  Uint8List? _processedImage;
+  int _selectedScale = 2; // Default scale 2x
+
+  // Fungsi untuk upload dan proses upscale
+  Future<void> _pickAndProcessImage() async {
+    final XFile? pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _isLoading = true;
+        _processedImage = null;
+      });
+
+      File imageFile = File(pickedFile.path);
+
+      // Kirim gambar dan nilai scale ke backend
+      Uint8List? result = await ApiService.upscaleImage(
+        imageFile,
+        _selectedScale,
+      );
+
+      setState(() {
+        _processedImage = result;
+        _isLoading = false;
+      });
+
+      if (result == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Gagal melakukan upscale. Cek koneksi server.'),
+            ),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,124 +67,123 @@ class _UpscalerScreenState extends State<UpscalerScreen> {
           // ── Title ──────────────────────────────────────
           Text(
             'Image Upscaler',
-            style: AppTypography.displayLg.copyWith(
-              color: AppColors.onSurface,
-            ),
+            style: AppTypography.displayLg.copyWith(color: AppColors.onSurface),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Enhance resolution and clarity of your images using AI.',
+            'Enhance image resolution up to 8x without losing quality.',
             style: AppTypography.bodyMd.copyWith(
               color: AppColors.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
 
-          // ── Source Image Card ───────────────────────────
-          SectionCard(
-            title: 'Source Image',
-            child: DashedUploadArea(
-              icon: Icons.upload_file_outlined,
-              primaryText: 'Click to upload or drag and drop',
-              secondaryText: 'PNG, JPG or WEBP (Max 5MB)',
-              buttonLabel: 'Browse Files',
-              height: 160,
-              onTap: () {
-                // TODO: open file picker, then call ApiService.upscaleImage()
-              },
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // ── Upscale Factor Card ────────────────────────
-          SectionCard(
-            title: 'Upscale Factor',
-            child: Column(
-              children: [
-                ScaleFactorSelector(
-                  factors: const ['2x', '4x', '8x'],
-                  selectedFactor: _selectedFactor,
-                  onSelected: (factor) {
-                    setState(() => _selectedFactor = factor);
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-                PrimaryButton(
-                  label: 'Upscale Image',
-                  icon: Icons.auto_awesome,
-                  onPressed: () {
-                    // TODO: call ApiService.upscaleImage() with selected factor
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
           // ── Preview Card ───────────────────────────────
           SectionCard(
-            title: 'Preview',
-            titleAction: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.compare,
-                  size: 16,
-                  color: AppColors.onSurfaceVariant,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-                Text(
-                  'Before / After',
-                  style: AppTypography.labelSm.copyWith(
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-            child: Container(
+            title: 'PREVIEW',
+            child: SizedBox(
               width: double.infinity,
-              height: 200,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(AppRadius.base),
-              ),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardWhite,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: AppColors.border, width: 1),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.photo_size_select_large_rounded,
-                        size: 36,
-                        color: AppColors.outlineVariant,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'No image uploaded yet.',
-                        style: AppTypography.bodyMd.copyWith(
-                          color: AppColors.onSurface,
-                          fontWeight: FontWeight.w500,
+              height: 220,
+              child: CheckerboardBackground(
+                child: Center(
+                  child: _isLoading
+                      ? const CircularProgressIndicator()
+                      : _processedImage != null
+                      ? Image.memory(_processedImage!, fit: BoxFit.contain)
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.image_search,
+                              size: 80,
+                              color: AppColors.onSurfaceVariant.withValues(
+                                alpha: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              'Upscaled image preview',
+                              style: AppTypography.labelSm.copyWith(
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Upload an image to see the before and after\ncomparison here.',
-                        style: AppTypography.labelSm.copyWith(
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // ── Scale Selection Card ───────────────────────
+          // Menonaktifkan pilihan scale saat sedang loading
+          AbsorbPointer(
+            absorbing: _isLoading,
+            child: Opacity(
+              opacity: _isLoading ? 0.5 : 1.0,
+              child: SectionCard(
+                title: 'SCALE FACTOR',
+                child: ScaleFactorSelector(
+                  initialScale: _selectedScale,
+                  onScaleChanged: (scale) {
+                    setState(() {
+                      _selectedScale = scale;
+                    });
+                  },
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // ── Success State Card ─────────────────────────
+          if (_processedImage != null && !_isLoading) ...[
+            Container(
+              decoration: AppTheme.cardDecoration,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Success!',
+                    style: AppTypography.headlineSm.copyWith(
+                      color: AppColors.onSurface,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Image successfully upscaled to ${_selectedScale}x.',
+                    style: AppTypography.bodyMd.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  PrimaryButton(
+                    label: 'Download PNG',
+                    icon: Icons.download,
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Fitur download segera hadir!'),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+
+          // ── Upload Button ──────────────────────────────
+          DashedUploadArea(
+            icon: Icons.upload_file,
+            primaryText: _processedImage == null && !_isLoading
+                ? 'Upload Image'
+                : 'Upload Another',
+            secondaryText: 'Tap to browse gallery\n\nSupports JPG, PNG, WEBP',
+            onTap: _isLoading ? null : _pickAndProcessImage,
           ),
           const SizedBox(height: AppSpacing.lg),
         ],
