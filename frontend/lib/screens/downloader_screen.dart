@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/widgets.dart';
 import '../services/api_service.dart';
+import 'package:gal/gal.dart';
 
 class DownloaderScreen extends StatefulWidget {
   const DownloaderScreen({super.key});
@@ -29,29 +30,49 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
       _isSuccess = false;
     });
 
-    // Mengirim URL ke backend FastAPI
-    bool success = await ApiService.downloadVideo(url);
+    // 1. Mengirim URL ke backend dan menerima path file dari memori HP
+    String? videoPath = await ApiService.downloadVideo(url);
 
-    setState(() {
-      _isLoading = false;
-      _isSuccess = success;
-    });
+    if (videoPath != null) {
+      try {
+        // 2. Minta izin akses galeri
+        bool hasAccess = await Gal.hasAccess();
+        if (!hasAccess) {
+          await Gal.requestAccess();
+        }
 
-    if (success) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Video berhasil diunduh oleh server!')),
-        );
+        // 3. Simpan video dari folder sementara ke Galeri
+        await Gal.putVideo(videoPath);
+
+        setState(() {
+          _isSuccess = true;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Video berhasil disimpan ke Galeri')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal menyimpan video ke galeri: $e')),
+          );
+        }
       }
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Gagal memproses video. Cek koneksi atau URL.'),
+            content: Text('Gagal mengunduh video. Cek koneksi atau URL.'),
           ),
         );
       }
     }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
@@ -159,7 +180,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Video berhasil ditarik dari server. (Fitur save ke galeri menyusul)',
+                    'Video berhasil didownload dan disimpan ke galeri',
                     style: AppTypography.bodyMd.copyWith(
                       color: AppColors.onSurfaceVariant,
                     ),

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 
 class ApiService {
   // Ganti dengan IPv4 laptopmu
@@ -58,7 +59,8 @@ class ApiService {
   }
 
   // 3. Endpoint Download Video (Masih berupa cetak biru dasar)
-  static Future<bool> downloadVideo(String url) async {
+  // 3. Endpoint Download Video
+  static Future<String?> downloadVideo(String url) async {
     try {
       var request = http.MultipartRequest(
         'POST',
@@ -68,14 +70,26 @@ class ApiService {
 
       var response = await request.send();
       if (response.statusCode == 200) {
-        // TODO: Logika untuk menyimpan file video ke memori HP (butuh package path_provider & permission_handler)
-        debugPrint('Video siap didownload!');
-        return true;
+        // Dapatkan folder sementara di HP
+        Directory tempDir = await getTemporaryDirectory();
+        // Buat nama file unik
+        String tempPath =
+            '${tempDir.path}/video_${DateTime.now().millisecondsSinceEpoch}.mp4';
+        File file = File(tempPath);
+
+        // Tulis aliran data video ke file tersebut
+        var bytes = await response.stream.toBytes();
+        await file.writeAsBytes(bytes);
+
+        // Kembalikan lokasi file-nya
+        return tempPath;
+      } else {
+        debugPrint('Error: ${response.statusCode}');
+        return null;
       }
-      return false;
     } catch (e) {
       debugPrint('Exception: $e');
-      return false;
+      return null;
     }
   }
 }

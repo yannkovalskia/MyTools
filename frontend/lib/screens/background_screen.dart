@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../widgets/widgets.dart';
 import '../services/api_service.dart';
+import 'package:gal/gal.dart';
 
 class BackgroundScreen extends StatefulWidget {
   const BackgroundScreen({super.key});
@@ -147,13 +148,35 @@ class _BackgroundScreenState extends State<BackgroundScreen> {
                   PrimaryButton(
                     label: 'Download PNG',
                     icon: Icons.download,
-                    onPressed: () {
-                      // TODO: Logika save ke galeri HP
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Fitur download segera hadir!'),
-                        ),
-                      );
+                    onPressed: () async {
+                      if (_processedImage != null) {
+                        try {
+                          // Meminta izin akses galeri jika belum ada
+                          bool hasAccess = await Gal.hasAccess();
+                          if (!hasAccess) {
+                            await Gal.requestAccess();
+                          }
+
+                          // Menyimpan gambar ke galeri
+                          await Gal.putImageBytes(_processedImage!);
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Mantap! Gambar berhasil disimpan ke Galeri 📸',
+                                ),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Gagal menyimpan: $e')),
+                            );
+                          }
+                        }
+                      }
                     },
                   ),
                 ],

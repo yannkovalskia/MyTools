@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
 import '../widgets/widgets.dart';
 import '../services/api_service.dart';
+import 'package:gal/gal.dart';
 
 class UpscalerScreen extends StatefulWidget {
   const UpscalerScreen({super.key});
@@ -162,12 +163,33 @@ class _UpscalerScreenState extends State<UpscalerScreen> {
                   PrimaryButton(
                     label: 'Download PNG',
                     icon: Icons.download,
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Fitur download segera hadir!'),
-                        ),
-                      );
+                    onPressed: () async {
+                      if (_processedImage != null) {
+                        try {
+                          bool hasAccess = await Gal.hasAccess();
+                          if (!hasAccess) {
+                            await Gal.requestAccess();
+                          }
+
+                          await Gal.putImageBytes(_processedImage!);
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Cakep! Gambar tajam udah masuk Galeri 🚀',
+                                ),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Gagal menyimpan: $e')),
+                            );
+                          }
+                        }
+                      }
                     },
                   ),
                 ],
