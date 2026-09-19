@@ -100,7 +100,7 @@ class _BackgroundScreenState extends State<BackgroundScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              Icons.headphones,
+                              Icons.layers_clear,
                               size: 80,
                               color: AppColors.onSurfaceVariant.withValues(
                                 alpha: 0.5,

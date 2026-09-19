@@ -1,0 +1,13 @@
+{
+  "python.defaultInterpreterPath": "c:\\Users\\Advan\\my-tools-app\\backend\\venv\\Scripts\\python.exe",
+  "python.pythonPath": "c:\\Users\\Advan\\my-tools-app\\backend\\venv\\Scripts\\python.exe",
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.activateEnvInCurrentTerminal": true,
+  "python.analysis.extraPaths": [
+    "c:\\Users\\Advan\\my-tools-app\\backend"
+  ],
+  "python.environments.terminal.activateEnvironment": false,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python"
+  }
+}

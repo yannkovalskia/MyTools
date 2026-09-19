@@ -7,6 +7,11 @@ import io
 import os
 import tempfile
 import yt_dlp
+try:
+    from imageio_ffmpeg import get_ffmpeg_exe
+    FFMPEG_PATH = get_ffmpeg_exe()
+except Exception:
+    FFMPEG_PATH = None  # Fallback ke ffmpeg system jika imageio tidak tersedia
 
 app = FastAPI(
     title="MyTools API",
@@ -80,10 +85,15 @@ async def download_video(url: str = Form(...)):
         # 2. Atur konfigurasi yt-dlp
         ydl_opts = {
             'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
-            'format': 'best',          # Ambil kualitas video + audio terbaik
-            'quiet': True,             # Sembunyikan log panjang di terminal
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'quiet': False,             # Tampilkan log untuk debugging
             'noplaylist': True,        # Hanya unduh 1 video meskipun linknya playlist
+            'socket_timeout': 30,      # Timeout per koneksi 30 detik
         }
+        
+        # Gunakan ffmpeg dari imageio jika tersedia (tidak perlu install ffmpeg manual)
+        if FFMPEG_PATH:
+            ydl_opts['ffmpeg_location'] = FFMPEG_PATH
         
         # 3. Proses ekstraksi dan download
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
